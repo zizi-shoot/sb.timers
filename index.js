@@ -57,18 +57,23 @@ app.use((err, req, res, _next) => {
 const server = createServer(app);
 const wss = new WebSocketServer({ clientTracking: false, noServer: true });
 
-server.on("upgrade", async (req, _socket, _head) => {
+server.on("upgrade", async (req, socket, _head) => {
   const mongoClient = await clientPromise;
   const db = mongoClient.db("mongo_timer");
   const cookies = cookie.parse(req.headers["cookie"]);
   const userToken = cookies && cookies["userToken"];
-
   const user = await findUserByToken(db, userToken);
+
+  if (!user) {
+    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+    socket.destroy();
+    return;
+  }
 
   req.db = db;
   req.user = user;
 
-  wss.handleUpgrade(req, _socket, _head, (ws) => {
+  wss.handleUpgrade(req, socket, _head, (ws) => {
     wss.emit("connection", ws, req);
   });
 });
