@@ -11,6 +11,10 @@ const findUserByUsername = async (db, username) => {
   return db.collection("users").find({ username }).toArray();
 };
 
+const findUserByUserId = async (db, userId) => {
+  return db.collection("users").findOne({ _id: ObjectId(userId) });
+};
+
 const findUserByToken = async (db, userToken) => {
   const token = await db.collection("tokens").findOne({ _id: ObjectId(userToken) });
   if (!token) return;
@@ -43,8 +47,71 @@ const createToken = async (db, userId) => {
 
   return token.insertedId.toString();
 };
+
 const deleteToken = async (db, userToken) => {
   await db.collection("tokens").deleteOne({ _id: ObjectId(userToken) });
 };
 
-export { hashPass, auth, createUser, findUserByToken, findUserByUsername, createToken, deleteToken };
+const getAllTimers = async (db, userId) => {
+  const timers = await db
+    .collection("timers")
+    .find({ userId: ObjectId(userId) })
+    .toArray();
+
+  return timers.map((timer) => {
+    if (!timer.end)
+      return {
+        ...timer,
+        start: +timer.start,
+        progress: Date.now() - +timer.start,
+      };
+
+    return {
+      ...timer,
+      start: +timer.start,
+      end: +timer.end,
+      duration: +timer.end - +timer.start,
+    };
+  });
+};
+
+const getActiveTimers = async (db, userId) => {
+  const timers = await db
+    .collection("timers")
+    .find({
+      userId: ObjectId(userId),
+      end: { $exists: false },
+    })
+    .toArray();
+
+  return timers.map((timer) => ({
+    ...timer,
+    start: +timer.start,
+    progress: Date.now() - +timer.start,
+  }));
+};
+
+const sentAllTimers = async (db, userId, ws) => {
+  const allTimers = await getAllTimers(db, userId);
+
+  ws.send(
+    JSON.stringify({
+      type: "all_timers",
+      timers: allTimers,
+    })
+  );
+};
+
+export {
+  hashPass,
+  auth,
+  createUser,
+  findUserByToken,
+  findUserByUsername,
+  findUserByUserId,
+  createToken,
+  deleteToken,
+  getActiveTimers,
+  getAllTimers,
+  sentAllTimers,
+};

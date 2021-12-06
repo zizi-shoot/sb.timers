@@ -3,7 +3,7 @@ import express from "express";
 import nunjucks from "nunjucks";
 import cookieParser from "cookie-parser";
 import cookie from "cookie";
-import { auth, findUserByToken } from "./js/utils.js";
+import { auth, findUserByToken, getActiveTimers, sentAllTimers } from "./js/utils.js";
 import { router as usersRoute } from "./js/users.js";
 import { router as timersRoute } from "./js/timers.js";
 import { clientPromise } from "./js/mongo_connect.js";
@@ -28,11 +28,9 @@ nunjucks.configure("views", {
 });
 
 app.set("view engine", "njk");
-
 app.use(express.json());
 app.use(express.static("public"));
 app.use(cookieParser());
-
 app.use(async (req, res, next) => {
   try {
     const mongoClient = await clientPromise;
@@ -42,7 +40,6 @@ app.use(async (req, res, next) => {
     next(err);
   }
 });
-
 app.get("/", auth(), (req, res) => {
   res.render("index", {
     user: req.user,
@@ -51,19 +48,14 @@ app.get("/", auth(), (req, res) => {
     userToken: req.userToken,
   });
 });
-
 app.use("/", usersRoute);
 app.use("/api/timers", timersRoute);
-
 app.use((err, req, res, _next) => {
   res.status(500).send(err.message);
 });
 
-const port = process.env.PORT || 3000;
-
 const server = createServer(app);
 const wss = new WebSocketServer({ clientTracking: false, noServer: true });
-const clients = new Map();
 
 server.on("upgrade", async (req, _socket, _head) => {
   const mongoClient = await clientPromise;
@@ -81,33 +73,38 @@ server.on("upgrade", async (req, _socket, _head) => {
   });
 });
 
-wss.on("connection", (ws, req) => {
-  const { username, userId } = req.user;
+wss.on("connection", async (ws, req) => {
+  const userId = req.user._id.toString();
 
-  clients.set(userId, ws);
+  await sentAllTimers(req.db, userId, ws);
 
-  ws.on("close", () => clients.delete(userId));
+  setInterval(async () => {
+    const activeTimers = await getActiveTimers(req.db, userId);
 
-  ws.on("message", (message, isBinary) => {
+    ws.send(
+      JSON.stringify({
+        type: "active_timers",
+        timers: activeTimers,
+      })
+    );
+  }, 1000);
+
+  ws.on("message", async (message) => {
     let data;
 
     try {
       data = JSON.parse(message);
-    } catch (e) {
+    } catch (err) {
       return;
     }
 
-    const fullMessage = JSON.stringify({
-      type: data.type,
-      message: data.message,
-      name: username,
-    });
-
-    for (ws of clients.values()) {
-      ws.send(fullMessage, { binary: isBinary });
+    if (data.message === "get_timers") {
+      await sentAllTimers(req.db, userId, ws);
     }
   });
 });
+
+const port = process.env.PORT || 3000;
 
 server.listen(port, () => {
   console.log(`  Listening on http://localhost:${port}`);

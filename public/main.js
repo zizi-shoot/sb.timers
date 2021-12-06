@@ -43,19 +43,13 @@
       oldTimers: [],
     },
     methods: {
-      fetchActiveTimers() {
-        fetchJson("/api/timers?isActive=true").then((activeTimers) => {
-          this.activeTimers = activeTimers;
-        });
-      },
-      fetchOldTimers() {
-        fetchJson("/api/timers?isActive=false").then((oldTimers) => {
-          this.oldTimers = oldTimers;
-        });
+      getTimers() {
+        this.client.send(JSON.stringify({ message: "get_timers" }));
       },
       createTimer() {
         const description = this.desc;
         this.desc = "";
+
         fetchJson("/api/timers", {
           method: "post",
           headers: {
@@ -64,7 +58,7 @@
           body: JSON.stringify({ description }),
         }).then(({ id }) => {
           info(`Created new timer "${description}" [${id}]`);
-          this.fetchActiveTimers();
+          this.getTimers();
         });
       },
       stopTimer(id) {
@@ -72,8 +66,7 @@
           method: "post",
         }).then(() => {
           info(`Stopped the timer [${id}]`);
-          this.fetchActiveTimers();
-          this.fetchOldTimers();
+          this.getTimers();
         });
       },
       formatTime(ts) {
@@ -92,14 +85,9 @@
       },
     },
     created() {
-      // this.fetchActiveTimers();
-      setInterval(() => {
-        // this.fetchActiveTimers();
-      }, 1000);
-      // this.fetchOldTimers();
-
       const wsProto = location.prototype === "https:" ? "wss:" : "ws:";
       const client = new WebSocket(`${wsProto}//${location.host}`);
+      this.client = client;
 
       client.addEventListener("message", (message) => {
         let data;
@@ -110,12 +98,15 @@
           return e;
         }
 
-        if (data.type === "chat_message") {
-          console.log(`${data.name} write: "${data.message}"`);
+        if (data.type === "all_timers") {
+          this.activeTimers = data.timers.filter((timer) => !timer.end);
+          this.oldTimers = data.timers.filter((timer) => timer.end);
+        }
+
+        if (data.type === "active_timers") {
+          this.activeTimers = data.timers;
         }
       });
-
-      // client.addEventListener('open', postMessage);
     },
   });
 })();

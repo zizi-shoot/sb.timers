@@ -4,49 +4,6 @@ import { ObjectId } from "mongodb";
 
 const router = express.Router();
 
-router.get("/", auth(), async (req, res) => {
-  try {
-    const user = await findUserByToken(req.db, req.userToken);
-    const timers = req.db.collection("timers");
-    if (req.query.isActive === "true") {
-      const targetTimers = await timers
-        .find({
-          end: { $exists: false },
-          userId: user._id,
-        })
-        .toArray();
-
-      res.json(
-        targetTimers.map((timer) => ({
-          ...timer,
-          start: +timer.start,
-          progress: Date.now() - +timer.start,
-        }))
-      );
-
-      return;
-    }
-
-    const targetTimers = await timers
-      .find({
-        end: { $exists: true },
-        userId: user._id,
-      })
-      .toArray();
-
-    res.json(
-      targetTimers.map((timer) => ({
-        ...timer,
-        start: +timer.start,
-        end: +timer.end,
-        duration: +timer.end - +timer.start,
-      }))
-    );
-  } catch (err) {
-    res.status(400).send(err.message);
-  }
-});
-
 router.post("/", auth(), async (req, res) => {
   const { description } = req.body;
   const timer = {};
