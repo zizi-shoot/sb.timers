@@ -1,12 +1,12 @@
 import express from "express";
-import { auth, findUserBySessionId } from "./utils.js";
+import { auth, findUserByToken } from "./utils.js";
 import { ObjectId } from "mongodb";
 
 const router = express.Router();
 
 router.get("/", auth(), async (req, res) => {
   try {
-    const user = await findUserBySessionId(req.db, req.sessionId);
+    const user = await findUserByToken(req.db, req.userToken);
     const timers = req.db.collection("timers");
     if (req.query.isActive === "true") {
       const targetTimers = await timers
@@ -51,7 +51,7 @@ router.post("/", auth(), async (req, res) => {
   const { description } = req.body;
   const timer = {};
   try {
-    const user = await findUserBySessionId(req.db, req.sessionId);
+    const user = await findUserByToken(req.db, req.userToken);
     const { insertedId } = await req.db.collection("timers").insertOne({
       description,
       start: Date.now(),

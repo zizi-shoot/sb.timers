@@ -92,11 +92,30 @@
       },
     },
     created() {
-      this.fetchActiveTimers();
+      // this.fetchActiveTimers();
       setInterval(() => {
-        this.fetchActiveTimers();
+        // this.fetchActiveTimers();
       }, 1000);
-      this.fetchOldTimers();
+      // this.fetchOldTimers();
+
+      const wsProto = location.prototype === "https:" ? "wss:" : "ws:";
+      const client = new WebSocket(`${wsProto}//${location.host}`);
+
+      client.addEventListener("message", (message) => {
+        let data;
+
+        try {
+          data = JSON.parse(message.data);
+        } catch (e) {
+          return e;
+        }
+
+        if (data.type === "chat_message") {
+          console.log(`${data.name} write: "${data.message}"`);
+        }
+      });
+
+      // client.addEventListener('open', postMessage);
     },
   });
 })();

@@ -11,23 +11,11 @@ const findUserByUsername = async (db, username) => {
   return db.collection("users").find({ username }).toArray();
 };
 
-const findUserBySessionId = async (db, sessionId) => {
-  const userSession = await db.collection("sessions").findOne({ _id: ObjectId(sessionId) });
-  if (!userSession) return;
+const findUserByToken = async (db, userToken) => {
+  const token = await db.collection("tokens").findOne({ _id: ObjectId(userToken) });
+  if (!token) return;
 
-  return db.collection("users").findOne({ _id: ObjectId(userSession.userId) });
-};
-
-const createSession = async (db, userId) => {
-  const session = await db.collection("sessions").insertOne({
-    userId,
-  });
-
-  return session.insertedId.toString();
-};
-
-const deleteSession = async (db, sessionId) => {
-  await db.collection("sessions").deleteOne({ name: sessionId });
+  return db.collection("users").findOne({ _id: ObjectId(token.userId) });
 };
 
 const createUser = async (db, username, pass) => {
@@ -40,12 +28,23 @@ const createUser = async (db, username, pass) => {
 };
 
 const auth = () => async (req, res, next) => {
-  if (!req.cookies["sessionId"]) {
+  if (!req.cookies["userToken"]) {
     return req.baseUrl === "/api/timers" ? res.sendStatus(401) : next();
   }
-  req.user = await findUserBySessionId(req.db, req.cookies["sessionId"]);
-  req.sessionId = req.cookies["sessionId"];
+  req.user = await findUserByToken(req.db, req.cookies["userToken"]);
+  req.userToken = req.cookies["userToken"];
   next();
 };
 
-export { hashPass, auth, createUser, deleteSession, createSession, findUserBySessionId, findUserByUsername };
+const createToken = async (db, userId) => {
+  const token = await db.collection("tokens").insertOne({
+    userId,
+  });
+
+  return token.insertedId.toString();
+};
+const deleteToken = async (db, userToken) => {
+  await db.collection("tokens").deleteOne({ _id: ObjectId(userToken) });
+};
+
+export { hashPass, auth, createUser, findUserByToken, findUserByUsername, createToken, deleteToken };

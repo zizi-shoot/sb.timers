@@ -1,4 +1,4 @@
-import { auth, createSession, createUser, deleteSession, findUserByUsername, hashPass } from "./utils.js";
+import { auth, createToken, createUser, deleteToken, findUserByUsername, hashPass } from "./utils.js";
 import bodyParser from "body-parser";
 import express from "express";
 
@@ -14,9 +14,9 @@ router.post("/login", bodyParser.urlencoded({ extended: true }), async (req, res
     }
 
     const [user] = users.filter((user) => user.password === hashPass(password));
-    const sessionId = await createSession(req.db, user._id.toString());
+    const userToken = await createToken(req.db, user._id.toString());
 
-    res.cookie("sessionId", sessionId, { httpOnly: true }).redirect("/");
+    res.cookie("userToken", userToken, { httpOnly: true }).redirect("/");
   } catch (err) {
     res.status(400).send(err.message);
   }
@@ -37,8 +37,8 @@ router.get("/logout", auth(), async (req, res) => {
   if (!req.user) return res.redirect("/");
 
   try {
-    await deleteSession(req.db, req.sessionId);
-    res.clearCookie("sessionId").redirect("/");
+    await deleteToken(req.db, req.userToken);
+    res.clearCookie("userToken").redirect("/");
   } catch (err) {
     res.status(400).send(err.message);
   }

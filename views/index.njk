@@ -61,7 +61,10 @@
   <script src="https://cdn.jsdelivr.net/npm/uikit@3.5.4/dist/js/uikit.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/uikit@3.5.4/dist/js/uikit-icons.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-  <script src="/main.js"></script>
+  <script>
+    window.AUTH_TOKEN = "[[ userToken ]]";
+  </script>
+  <script type="module" src="/main.js"></script>
   [% else %]
   <section class="uk-container uk-margin-top uk-margin-bottom">
     [% if authError %]
@@ -70,7 +73,7 @@
     </div>
     [% endif %]
     <h2>Login</h2>
-    <form method="POST" action="/login" enctype="application/x-www-form-urlencoded">
+    <form method="POST" name="login" action="/login" enctype="application/x-www-form-urlencoded">
       <p><input type="text" name="username" class="uk-input"></p>
       <p><input type="password" name="password" class="uk-input"></p>
       <p>
@@ -79,7 +82,7 @@
     </form>
     <h1>OR</h1>
     <h2>Signup</h2>
-    <form method="POST" action="/signup" enctype="application/x-www-form-urlencoded">
+    <form method="POST" name="signup" action="/signup" enctype="application/x-www-form-urlencoded">
       <p><input type="text" name="username" class="uk-input"></p>
       <p><input type="password" name="password" class="uk-input"></p>
       <p>
@@ -94,5 +97,6 @@
     window.history.replaceState(null, null, '/');
   </script>
   [% endif %]
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
 </body>
 </html>
